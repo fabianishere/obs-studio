@@ -349,11 +349,10 @@
 	}
 }
 
-- (void)queueFrameWithSize:(NSSize)size
-		 timestamp:(uint64_t)timestamp
-	      fpsNumerator:(uint32_t)fpsNumerator
-	    fpsDenominator:(uint32_t)fpsDenominator
-		 frameData:(NSData *)frameData
+- (void)queueFrameWithPixelBuffer:(CVPixelBufferRef)frame
+			timestamp:(uint64_t)timestamp
+		     fpsNumerator:(uint32_t)fpsNumerator
+		   fpsDenominator:(uint32_t)fpsDenominator
 {
 	if (CMSimpleQueueGetFullness(self.queue) >= 1.0) {
 		DLog(@"Queue is full, bailing out");
@@ -374,8 +373,19 @@
 	self.sequenceNumber = CMIOGetNextSequenceNumber(self.sequenceNumber);
 
 	CMSampleBufferRef sampleBuffer;
-	CMSampleBufferCreateFromData(size, timingInfo, self.sequenceNumber,
-				     frameData, &sampleBuffer);
+
+	// Generate the video format description from that pixel buffer
+	CMVideoFormatDescriptionRef format;
+	err = CMVideoFormatDescriptionCreateForImageBuffer(NULL, frame,
+							   &format);
+	if (err != noErr) {
+		DLog(@"CMVideoFormatDescriptionCreateForImageBuffer err %d",
+		     err);
+		return;
+	}
+
+	CMSampleBufferCreateReadyWithImageBuffer(
+		kCFAllocatorDefault, frame, format, &timingInfo, &sampleBuffer);
 	CMSimpleQueueEnqueue(self.queue, sampleBuffer);
 
 	// Inform the clients that the queue has been altered

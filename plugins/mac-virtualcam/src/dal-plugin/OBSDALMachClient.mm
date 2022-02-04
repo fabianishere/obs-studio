@@ -100,30 +100,42 @@
 		DLog(@"Received connect response");
 		break;
 	case MachMsgIdFrame:
-		VLog(@"Received frame message");
-		if (components.count >= 6) {
-			CGFloat width;
-			[components[0] getBytes:&width length:sizeof(width)];
-			CGFloat height;
-			[components[1] getBytes:&height length:sizeof(height)];
+		DLog(@"Received frame message");
+		if (components.count >= 4) {
+			mach_port_t framePort =
+				(mach_port_t)((NSMachPort *)components[0])
+					.machPort;
+			IOSurfaceRef surface =
+				IOSurfaceLookupFromMachPort(framePort);
+			mach_port_deallocate(mach_task_self(), framePort);
+
+			CVPixelBufferRef frame = NULL;
+			CVPixelBufferCreateWithIOSurface(NULL, surface, NULL,
+							 &frame);
+			CFRelease(surface);
+
 			uint64_t timestamp;
-			[components[2] getBytes:&timestamp
+			[components[1] getBytes:&timestamp
 					 length:sizeof(timestamp)];
-			VLog(@"Received frame data: %fx%f (%llu)", width,
-			     height, timestamp);
-			NSData *frameData = components[3];
+
+			DLog(@"Received frame data: %zux%zu (%llu)",
+			     CVPixelBufferGetWidth(frame),
+			     CVPixelBufferGetHeight(frame), timestamp);
+
 			uint32_t fpsNumerator;
-			[components[4] getBytes:&fpsNumerator
+			[components[2] getBytes:&fpsNumerator
 					 length:sizeof(fpsNumerator)];
 			uint32_t fpsDenominator;
-			[components[5] getBytes:&fpsDenominator
+			[components[3] getBytes:&fpsDenominator
 					 length:sizeof(fpsDenominator)];
+
 			[self.delegate
-				receivedFrameWithSize:NSMakeSize(width, height)
-					    timestamp:timestamp
-					 fpsNumerator:fpsNumerator
-				       fpsDenominator:fpsDenominator
-					    frameData:frameData];
+				receivedFrameWithPixelBuffer:frame
+						   timestamp:timestamp
+						fpsNumerator:fpsNumerator
+					      fpsDenominator:fpsDenominator];
+
+			CVPixelBufferRelease(frame);
 		}
 		break;
 	case MachMsgIdStop:

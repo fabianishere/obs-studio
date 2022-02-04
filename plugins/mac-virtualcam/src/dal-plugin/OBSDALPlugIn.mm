@@ -203,19 +203,18 @@ typedef enum {
 
 #pragma mark - MachClientDelegate
 
-- (void)receivedFrameWithSize:(NSSize)size
-		    timestamp:(uint64_t)timestamp
-		 fpsNumerator:(uint32_t)fpsNumerator
-	       fpsDenominator:(uint32_t)fpsDenominator
-		    frameData:(NSData *)frameData
+- (void)receivedFrameWithPixelBuffer:(CVPixelBufferRef)frame
+			   timestamp:(uint64_t)timestamp
+			fpsNumerator:(uint32_t)fpsNumerator
+		      fpsDenominator:(uint32_t)fpsDenominator
 {
 	dispatch_sync(_stateQueue, ^{
 		if (_state == PlugInStateWaitingForServer) {
 			NSUserDefaults *defaults =
 				[NSUserDefaults standardUserDefaults];
-			[defaults setInteger:size.width
+			[defaults setInteger:(long)CVPixelBufferGetWidth(frame)
 				      forKey:kTestCardWidthKey];
-			[defaults setInteger:size.height
+			[defaults setInteger:(long)CVPixelBufferGetHeight(frame)
 				      forKey:kTestCardHeightKey];
 			[defaults setDouble:(double)fpsNumerator /
 					    (double)fpsDenominator
@@ -234,11 +233,10 @@ typedef enum {
 		dispatch_time(DISPATCH_TIME_NOW, 5.0 * NSEC_PER_SEC),
 		5.0 * NSEC_PER_SEC, (1ull * NSEC_PER_SEC) / 10);
 
-	[self.stream queueFrameWithSize:size
-			      timestamp:timestamp
-			   fpsNumerator:fpsNumerator
-			 fpsDenominator:fpsDenominator
-			      frameData:frameData];
+	[self.stream queueFrameWithPixelBuffer:frame
+				     timestamp:timestamp
+				  fpsNumerator:fpsNumerator
+				fpsDenominator:fpsDenominator];
 }
 
 - (void)receivedStop
