@@ -58,6 +58,7 @@ set_target_properties(
              FOLDER "plugins"
              VERSION "0"
              SOVERSION "0"
+             OSX_ARCHITECTURES "x86_64;arm64;arm64e"
              LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../../"
              MACOSX_BUNDLE_INFO_PLIST
              "${CMAKE_SOURCE_DIR}/cmake/bundle/macOS/Virtualcam-Info.plist.in")
